@@ -30,7 +30,7 @@ func folderVisit(path string, f os.FileInfo, err error) error {
 
 	if strings.HasSuffix(f.Name(), ".epub") {
 		fmt.Printf("Convert: %s\n", f.Name())
-		convertEPUB(path, targetPath+f.Name())
+		convertEPUB(path, targetPath+gotongwen.Convert(f.Name()))
 	}
 
 	return nil
