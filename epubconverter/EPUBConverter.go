@@ -64,7 +64,7 @@ func convertEPUB(source string, target string) {
 		zipFileReader := bufio.NewReader(rc)
 
 		//We only convert xhtml file , other files will be wrote directly.
-		if strings.HasSuffix(f.Name, "xhtml") || strings.HasSuffix(f.Name, "html") {
+		if endWith(f.Name, "xhtml") || endWith(f.Name, "html") || endWith(f.Name, "htm") {
 
 			//Create a string list from file in zip.
 			lines, _ := knife.ReadLines_FromReader(zipFileReader)
@@ -83,6 +83,10 @@ func convertEPUB(source string, target string) {
 
 		rc.Close()
 	}
+}
+
+func endWith(source string, suffix string) bool {
+	return strings.HasSuffix(source, suffix)
 }
 
 func writeLines_To_ZipFile(lines []string, writer *zip.Writer, fileName string) {
