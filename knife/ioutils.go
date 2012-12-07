@@ -1,4 +1,4 @@
-package macgyver
+package knife
 
 import (
 	"bufio"

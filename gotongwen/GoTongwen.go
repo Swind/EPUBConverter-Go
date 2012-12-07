@@ -34,6 +34,7 @@ func convertPhrase(str string) (result string) {
 	//travel all word and find match phrase
 	for index := 0; index < strLen; {
 
+		//Avoid out of ranage
 		subStrLength := minLength(maxLength, strLen-index)
 
 		//If there is match phrase , replace by it

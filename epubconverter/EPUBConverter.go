@@ -5,21 +5,35 @@ import (
 	"bufio"
 	"fmt"
 	"gotongwen"
+	"knife"
 	"log"
-	"macgyver"
 	"os"
+	"path/filepath"
+	"strings"
 )
+
+const MAX_BUFFLENGTH int = 1024 * 16
+const sourcePath string = "./source/"
+const targetPath string = "./target/"
 
 type stringHandler func(input string) (output string)
 
-func printLines(lines []string) {
-	for _, line := range lines {
-		fmt.Println(line)
+func main() {
+	err := filepath.Walk(sourcePath, folderVisit)
+	if err != nil {
+		log.Fatal(err)
 	}
+
 }
 
-func main() {
-	convertEPUB("test.epub", "result.epub")
+func folderVisit(path string, f os.FileInfo, err error) error {
+
+	if strings.HasSuffix(f.Name(), ".epub") {
+		fmt.Printf("Convert: %s\n", f.Name())
+		convertEPUB(path, targetPath+f.Name())
+	}
+
+	return nil
 }
 
 func convertEPUB(source string, target string) {
@@ -39,28 +53,32 @@ func convertEPUB(source string, target string) {
 	zipWriter := zip.NewWriter(targetFile)
 	defer zipWriter.Close()
 
-	//travel all file in zip
+	//Travel all file in zip
 	for _, f := range r.File {
 
+		//Open file in the zip file and create a buffer reader
 		rc, err := f.Open()
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		zipFileReader := bufio.NewReader(rc)
-		fmt.Println(f.Name)
-		if f.Name[len(f.Name)-5:] == "xhtml" {
+
+		//We only convert xhtml file , other files will be wrote directly.
+		if strings.HasSuffix(f.Name, "xhtml") || strings.HasSuffix(f.Name, "html") {
 
 			//Create a string list from file in zip.
-			lines, _ := macgyver.ReadLines_FromReader(zipFileReader)
+			lines, _ := knife.ReadLines_FromReader(zipFileReader)
 
 			//Convert the content by tongweng table
 			lines = handleLines(lines, gotongwen.Convert)
 
 			//Write to new zip file
 			writeLines_To_ZipFile(lines, zipWriter, f.Name)
+
 		} else {
+
 			writeBytes_To_ZipFile(zipFileReader, zipWriter, f.Name)
+
 		}
 
 		rc.Close()
@@ -68,6 +86,8 @@ func convertEPUB(source string, target string) {
 }
 
 func writeLines_To_ZipFile(lines []string, writer *zip.Writer, fileName string) {
+
+	//Create a file in the zip file
 	f, err := writer.Create(fileName)
 	if err != nil {
 		log.Fatal(err)
@@ -82,19 +102,20 @@ func writeLines_To_ZipFile(lines []string, writer *zip.Writer, fileName string) 
 }
 
 func writeBytes_To_ZipFile(reader *bufio.Reader, writer *zip.Writer, fileName string) {
-	var (
-		part   []byte
-		length int
-	)
 
-	part = make([]byte, 1024)
+	var part = make([]byte, 1024)
+	var length int = 0
+
 	f, err := writer.Create(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for {
 		if length, err = reader.Read(part); err != nil {
 			break
 		}
-		fmt.Println(length)
+
 		if length != 0 {
 			f.Write(part[:length])
 		} else {
@@ -109,6 +130,5 @@ func handleLines(lines []string, handler stringHandler) (results []string) {
 	for _, line := range lines {
 		results = append(results, handler(line))
 	}
-
 	return
 }
