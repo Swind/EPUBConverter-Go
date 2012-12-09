@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -18,19 +19,42 @@ const targetPath string = "./target/"
 
 type stringHandler func(input string) (output string)
 
+var request_queue chan int
+var count int = 0
+
 func main() {
-	err := filepath.Walk(sourcePath, folderVisit)
+
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	request_queue = make(chan int, runtime.NumCPU())
+
+	fmt.Printf("CPU is %d core\n", runtime.NumCPU())
+	err := travelAllFile(sourcePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 }
 
+func travelAllFile(path string) (err error) {
+
+	err = filepath.Walk(path, folderVisit)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return
+
+}
+
 func folderVisit(path string, f os.FileInfo, err error) error {
 
 	if strings.HasSuffix(f.Name(), ".epub") {
-		fmt.Printf("Convert: %s\n", f.Name())
-		convertEPUB(path, targetPath+gotongwen.Convert(f.Name()))
+		fmt.Printf("Convert: %s\n", gotongwen.Convert(f.Name()))
+
+		//Put a request to queue, the max size of queue is CPU number.
+		count++
+		request_queue <- count
+		go convertEPUB(path, targetPath+gotongwen.Convert(f.Name()))
 	}
 
 	return nil
@@ -83,6 +107,8 @@ func convertEPUB(source string, target string) {
 
 		rc.Close()
 	}
+
+	<-request_queue
 }
 
 func endWith(source string, suffix string) bool {
